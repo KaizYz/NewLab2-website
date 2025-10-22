@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lab2: Image Homography and Warping - Computer Vision Project</title>
+    <style>
+        :root {
+            --accent: #5e6af6;
+            --accent-alt: #8a75f1;
+            --ink: #1f2441;
+            --muted: #4c5272;
+            --card-bg: rgba(255, 255, 255, 0.96);
+            --shadow-soft: 0 18px 38px rgba(31, 36, 65, 0.12);
+            --shadow-hover: 0 22px 46px rgba(31, 36, 65, 0.18);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--ink);
+            background: linear-gradient(135deg, #f5f7ff 0%, #dce5ff 100%);
+            min-height: 100vh;
+        }
+        
+        a {
+            color: inherit;
+        }
+        
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(12px);
+            box-shadow: 0 10px 26px rgba(31, 36, 65, 0.12);
+            padding: 1.25rem 0;
+        }
+        
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+        }
+        
+        .title-block {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .logo-badge {
+            width: 50px;
+            height: 50px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-alt) 100%);
+            color: white;
+            font-weight: 700;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 12px 24px rgba(94, 106, 246, 0.35);
+            letter-spacing: 0.08em;
+        }
+        
+        header h1 {
+            font-size: 2.1rem;
+            color: var(--ink);
+        }
+        
+        header p {
+            color: var(--muted);
+            font-size: 1rem;
+        }
+        
+        .page-nav {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+        
+        .page-nav a {
+            text-decoration: none;
+            padding: 0.45rem 0.9rem;
+            border-radius: 999px;
+            font-weight: 600;
+            color: var(--muted);
+            transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .page-nav a:hover,
+        .page-nav a:focus {
+            background: rgba(94, 106, 246, 0.15);
+            color: var(--ink);
+            box-shadow: 0 6px 16px rgba(94, 106, 246, 0.25);
+            outline: none;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 3rem auto 2rem;
+            padding: 0 2rem;
+        }
+        
+        .intro-section,
+        .section {
+            background: var(--card-bg);
+            border-radius: 18px;
+            padding: 2rem;
+            margin-bottom: 2.5rem;
+            box-shadow: var(--shadow-soft);
+            border: 1px solid rgba(94, 106, 246, 0.08);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .section:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-hover);
+        }
+        
+        .intro-section h2 {
+            color: var(--accent);
+            margin-bottom: 1rem;
+        }
+        
+        .section-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid rgba(94, 106, 246, 0.2);
+        }
+        
+        .section-number {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-alt) 100%);
+            color: white;
+            width: 58px;
+            height: 58px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-right: 1rem;
+            box-shadow: 0 10px 22px rgba(94, 106, 246, 0.3);
+        }
+        
+        .section h2 {
+            color: var(--ink);
+            font-size: 1.75rem;
+        }
+        
+        .section h3 {
+            color: var(--accent);
+            margin-top: 1.75rem;
+            margin-bottom: 1rem;
+        }
+        
+        .section p {
+            margin-bottom: 1rem;
+            color: var(--muted);
+            font-size: 1.05rem;
+        }
+        
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        
+        .image-container {
+            position: relative;
+            overflow: hidden;
+            border-radius: 14px;
+            box-shadow: 0 14px 28px rgba(31, 36, 65, 0.18);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .image-container:hover {
+            transform: scale(1.03);
+            box-shadow: 0 18px 38px rgba(31, 36, 65, 0.2);
+        }
+        
+        .image-container img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        .image-caption {
+            background: rgba(94, 106, 246, 0.9);
+            color: white;
+            padding: 0.85rem;
+            text-align: center;
+            font-size: 0.9rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+        
+        .highlight-box {
+            background: linear-gradient(135deg, rgba(94, 106, 246, 0.12), rgba(138, 117, 241, 0.08));
+            border-left: 4px solid var(--accent);
+            padding: 1.6rem;
+            margin: 1.75rem 0;
+            border-radius: 10px;
+        }
+        
+        .highlight-box h4 {
+            color: var(--accent);
+            margin-bottom: 0.75rem;
+            font-size: 1.1rem;
+        }
+        
+        .highlight-list {
+            list-style: none;
+            padding-left: 0;
+            margin: 0;
+        }
+        
+        .highlight-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            margin-bottom: 0.6rem;
+            color: var(--muted);
+        }
+        
+        .highlight-list li::before {
+            content: "-";
+            color: var(--accent);
+            font-weight: 700;
+            line-height: 1.1;
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        
+        .feature-card {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 1.6rem;
+            border-radius: 14px;
+            border: 1px solid rgba(94, 106, 246, 0.18);
+            box-shadow: 0 12px 28px rgba(31, 36, 65, 0.12);
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        
+        .feature-icon {
+            align-self: flex-start;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-alt) 100%);
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            padding: 0.35rem 0.75rem;
+            border-radius: 999px;
+        }
+        
+        .feature-card h4 {
+            color: var(--ink);
+            margin-bottom: 0;
+        }
+        
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 16px 32px rgba(31, 36, 65, 0.14);
+        }
+        
+        .comparison-table th {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-alt) 100%);
+            color: white;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            letter-spacing: 0.03em;
+        }
+        
+        .comparison-table td {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(94, 106, 246, 0.12);
+            color: var(--muted);
+            background: rgba(255, 255, 255, 0.96);
+        }
+        
+        .comparison-table tr:nth-child(even) td {
+            background: rgba(94, 106, 246, 0.04);
+        }
+        
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        
+        .stat-box {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-alt) 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 14px;
+            text-align: center;
+            box-shadow: 0 16px 30px rgba(94, 106, 246, 0.35);
+        }
+        
+        .stat-number {
+            font-size: 2.4rem;
+            font-weight: 700;
+            margin-bottom: 0.4rem;
+        }
+        
+        .stat-label {
+            font-size: 0.95rem;
+            letter-spacing: 0.04em;
+        }
+        
+        .badge {
+            display: inline-block;
+            background: rgba(94, 106, 246, 0.14);
+            color: var(--ink);
+            padding: 0.35rem 0.85rem;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            margin: 0.25rem;
+            font-weight: 600;
+        }
+        
+        footer {
+            background: rgba(255, 255, 255, 0.95);
+            text-align: center;
+            padding: 2.5rem 1.5rem 2rem;
+            margin-top: 3rem;
+            color: var(--muted);
+        }
+        
+        footer p {
+            margin: 0;
+        }
+        
+        footer p:last-child {
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        .back-to-top {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-alt) 100%);
+            color: white;
+            padding: 0.65rem 1.1rem;
+            border-radius: 999px;
+            font-weight: 600;
+            text-decoration: none;
+            box-shadow: 0 14px 28px rgba(94, 106, 246, 0.35);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .back-to-top:hover,
+        .back-to-top:focus {
+            transform: translateY(-3px);
+            box-shadow: 0 18px 32px rgba(94, 106, 246, 0.42);
+            outline: none;
+        }
+        
+        @media (max-width: 900px) {
+            header h1 {
+                font-size: 1.9rem;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .header-content {
+                justify-content: flex-start;
+            }
+            
+            .page-nav {
+                width: 100%;
+            }
+            
+            .container {
+                margin-top: 2.4rem;
+            }
+            
+            .section,
+            .intro-section {
+                padding: 1.6rem;
+            }
+            
+            .image-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .back-to-top {
+                bottom: 1.5rem;
+                right: 1.5rem;
+            }
+        }
+        
+        @media (max-width: 520px) {
+            header h1 {
+                font-size: 1.65rem;
+            }
+            
+            .logo-badge {
+                width: 44px;
+                height: 44px;
+            }
+        }
+    </style>
+</head>
+<body id="top">
+    <header>
+        <div class="header-content">
+            <div class="title-block">
+                <span class="logo-badge">L2</span>
+                <div>
+                    <h1>Lab2: Image Homography and Warping</h1>
+                    <p>Computer Vision Project - CSCI 581</p>
+                </div>
+            </div>
+            <nav class="page-nav">
+                <a href="#overview">Overview</a>
+                <a href="#homography">Homography</a>
+                <a href="#ar">AR Poster</a>
+                <a href="#comparison">Comparison</a>
+            </nav>
+        </div>
+    </header>
+    
+    <div class="container">
+        <!-- Introduction -->
+        <div class="intro-section" id="overview">
+            <h2>Project Overview</h2>
+            <p>This project explores fundamental concepts in computer vision including homography estimation, image warping, and augmented reality applications. The work is divided into three comprehensive parts, each demonstrating different aspects of geometric transformations in image processing.</p>
+            
+            <div class="stats-container">
+                <div class="stat-box">
+                    <div class="stat-number">3</div>
+                    <div class="stat-label">Major Components</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">28</div>
+                    <div class="stat-label">Output Files</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">14</div>
+                    <div class="stat-label">Core Functions</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Part 1 -->
+        <div class="section" id="homography">
+            <div class="section-header">
+                <div class="section-number">1</div>
+                <h2>Image Homography Estimation</h2>
+            </div>
+            
+            <p>Implemented homography estimation to rectify images containing planar surfaces captured at an angle. This enables perspective correction and document rectification.</p>
+            
+            <div class="highlight-box">
+                <h4>Key Achievements</h4>
+                <ul class="highlight-list">
+                    <li>Custom DLT (Direct Linear Transform) implementation with point normalization.</li>
+                    <li>Inverse mapping with bilinear interpolation for hole-free warping.</li>
+                    <li>Interactive point selection tool for correspondence marking.</li>
+                    <li>Comparison with OpenCV implementation (perfect match achieved).</li>
+                </ul>
+            </div>
+            
+            <h3>Results Gallery</h3>
+            <div class="image-grid">
+                <div class="image-container">
+                    <img src="results_part1/scene_1b_correspondences.png" alt="Point Correspondences">
+                    <div class="image-caption">Selected Correspondences</div>
+                </div>
+                <div class="image-container">
+                    <img src="results_part1/scene_1b_comparison.png" alt="Before and After">
+                    <div class="image-caption">Homography Rectification Results</div>
+                </div>
+            </div>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <span class="feature-icon">DLT</span>
+                    <h4>DLT Algorithm</h4>
+                    <p>Direct Linear Transform with SVD-based solution for robust homography estimation.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">NORM</span>
+                    <h4>Point Normalization</h4>
+                    <p>Improves numerical stability by normalizing coordinates before computation.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">WARP</span>
+                    <h4>Inverse Mapping</h4>
+                    <p>Backward warping ensures no holes in the output image.</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Part 2 -->
+        <div class="section" id="ar">
+            <div class="section-header">
+                <div class="section-number">2</div>
+                <h2>AR Poster Placement Application</h2>
+            </div>
+            
+            <p>Creative application of homography for augmented reality effects. Virtual posters are seamlessly integrated onto real-world planar surfaces using perspective transformation.</p>
+            
+            <div class="highlight-box">
+                <h4>Creative Implementation</h4>
+                <p>This project demonstrates practical AR applications by placing virtual posters on walls and surfaces with correct perspective distortion. The technique has applications in advertising, interior design, event planning, and architectural visualization.</p>
+            </div>
+            
+            <h3>Example Demonstrations</h3>
+            <div class="image-grid">
+                <div class="image-container">
+                    <img src="results_part2/ar_visualization_example1.png" alt="Art Exhibition Poster">
+                    <div class="image-caption">Example 1: Art Exhibition Poster</div>
+                </div>
+                <div class="image-container">
+                    <img src="results_part2/ar_visualization_example2.png" alt="Concert Event Poster">
+                    <div class="image-caption">Example 2: Concert Event Poster</div>
+                </div>
+                <div class="image-container">
+                    <img src="results_part2/ar_visualization_example3.png" alt="Alpha Blending">
+                    <div class="image-caption">Example 3: Alpha Blending Effects</div>
+                </div>
+                <div class="image-container">
+                    <img src="results_part2/ar_visualization_example4.png" alt="Multiple Posters">
+                    <div class="image-caption">Example 4: Multiple Posters</div>
+                </div>
+            </div>
+            
+            <h3>Application Scenarios</h3>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <span class="feature-icon">ART</span>
+                    <h4>Digital Art Display</h4>
+                    <p>Preview artwork on gallery walls before installation.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">EVENT</span>
+                    <h4>Event Planning</h4>
+                    <p>Visualize event banners and signage in actual venues.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">DESIGN</span>
+                    <h4>Interior Design</h4>
+                    <p>Test poster and decoration placements virtually.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">ADS</span>
+                    <h4>AR Advertising</h4>
+                    <p>Preview ad placements on billboards and facades.</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Part 3 -->
+        <div class="section" id="comparison">
+            <div class="section-header">
+                <div class="section-number">3</div>
+                <h2>Warping Methods Comparison</h2>
+            </div>
+            
+            <p>Comprehensive comparison between Triangular Mesh Warping and Thin-Plate Spline (TPS) Warping, analyzing their differences in smoothness, continuity, and computational cost.</p>
+            
+            <h3>Comparative Analysis</h3>
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Aspect</th>
+                        <th>Triangular Mesh Warping</th>
+                        <th>TPS Warping</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Smoothness</strong></td>
+                        <td>Piecewise smooth (C^0 continuous)</td>
+                        <td>Globally smooth (C^infinity continuous)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Speed</strong></td>
+                        <td>Fast (O(T*P))</td>
+                        <td>Slower (O(N^3 + M*N))</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Discontinuities</strong></td>
+                        <td>May occur at triangle boundaries</td>
+                        <td>No discontinuities</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Local Control</strong></td>
+                        <td>Excellent</td>
+                        <td>Global influence</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Best Use Cases</strong></td>
+                        <td>Real-time applications, AR/VR</td>
+                        <td>Medical imaging, animation</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h3>Visual Comparisons</h3>
+            <div class="image-grid">
+                <div class="image-container">
+                    <img src="results_part3/comparison_synthetic_deformation.png" alt="Synthetic Deformation">
+                    <div class="image-caption">Synthetic Deformation Test</div>
+                </div>
+                <div class="image-container">
+                    <img src="results_part3/comparison_facial_warping.png" alt="Facial Warping">
+                    <div class="image-caption">Facial Expression Warping</div>
+                </div>
+                <div class="image-container">
+                    <img src="results_part3/comparison_grid_smoothness.png" alt="Grid Smoothness">
+                    <div class="image-caption">Grid Deformation Analysis</div>
+                </div>
+            </div>
+            
+            <div class="highlight-box">
+                <h4>Key Findings</h4>
+                <ul class="highlight-list">
+                    <li><strong>Performance:</strong> Triangular mesh is 5-20x faster than TPS.</li>
+                    <li><strong>Quality:</strong> TPS produces smoother, more natural-looking deformations.</li>
+                    <li><strong>Application:</strong> Choose based on speed versus quality requirements.</li>
+                    <li><strong>Complexity:</strong> TPS relies on O(N^3) matrices while mesh warping uses local O(T*P) transforms.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <a class="back-to-top" href="#top">Back to top</a>
+    
+    <footer>
+        <p>&copy; 2025 CSCI 581 Computer Vision Lab | Lab2: Image Homography and Warping</p>
+        <p>Project completed with comprehensive implementation and analysis</p>
+    </footer>
+</body>
+</html>
